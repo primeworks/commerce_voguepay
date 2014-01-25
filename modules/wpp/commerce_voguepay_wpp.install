@@ -8,7 +8,7 @@
 /**
  * Implementation of hook_requirements().
  */
-function commerce_paypal_wpp_requirements($phase) {
+function commerce_voguepay_wpp_requirements($phase) {
   // Skip the requirements check if SimpleTest is installed to avoid multiple
   // cURL rows.
   if (module_exists('simpletest')) {
@@ -19,15 +19,15 @@ function commerce_paypal_wpp_requirements($phase) {
 
   $has_curl = function_exists('curl_init');
 
-  $requirements['commerce_paypal_wpp_curl'] = array(
+  $requirements['commerce_voguepay_wpp_curl'] = array(
     'title' => $t('cURL'),
     'value' => $has_curl ? $t('Enabled') : $t('Not found'),
   );
 
   if (!$has_curl) {
-    $requirements['commerce_paypal_wpp_curl'] += array(
+    $requirements['commerce_voguepay_wpp_curl'] += array(
       'severity' => REQUIREMENT_ERROR,
-      'description' => $t("PayPal WPP requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php')),
+      'description' => $t("VoguePay WPP requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php')),
     );
   }
 

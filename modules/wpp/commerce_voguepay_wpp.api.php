@@ -16,6 +16,6 @@
  *   If available, the full order object the payment request is being submitted
  *   for; otherwise NULL.
  */
-function hook_commerce_paypal_wpp_request_alter(&$nvp, $order) {
+function hook_commerce_voguepay_wpp_request_alter(&$nvp, $order) {
   // No example.
 }

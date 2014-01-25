@@ -2,27 +2,27 @@
 
 /**
  * @file
- * Implements PayPal payment services for use with Drupal Commerce.
+ * Implements VoguePay payment services for use with Drupal Commerce.
  */
 
 
 /**
  * Implements hook_menu().
  */
-function commerce_paypal_menu() {
+function commerce_voguepay_menu() {
   $items = array();
 
   // Define an always accessible path to receive IPNs.
-  $items['commerce_paypal/ipn'] = array(
-    'page callback' => 'commerce_paypal_process_ipn',
+  $items['commerce_voguepay/ipn'] = array(
+    'page callback' => 'commerce_voguepay_process_ipn',
     'page arguments' => array(),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
 
   // Define an additional IPN path that is payment method / instance specific.
-  $items['commerce_paypal/ipn/%commerce_payment_method_instance'] = array(
-    'page callback' => 'commerce_paypal_process_ipn',
+  $items['commerce_voguepay/ipn/%commerce_payment_method_instance'] = array(
+    'page callback' => 'commerce_voguepay_process_ipn',
     'page arguments' => array(2),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
@@ -37,9 +37,9 @@ function commerce_paypal_menu() {
  * @param $method_id
  *   Optionally specify a payment method ID to include in the URL.
  */
-function commerce_paypal_ipn_url($method_id = NULL) {
+function commerce_voguepay_ipn_url($method_id = NULL) {
   $parts = array(
-    'commerce_paypal',
+    'commerce_voguepay',
     'ipn',
   );
 
@@ -58,12 +58,12 @@ function commerce_paypal_ipn_url($method_id = NULL) {
  * @param $debug_ipn
  *   Optionally specify an IPN array for debug purposes; if left empty, the IPN
  *     be pulled from the $_POST. If an IPN is passed in, validation of the IPN
- *     at PayPal will be bypassed.
+ *     at VoguePay will be bypassed.
  *
  * @return
  *   TRUE or FALSE indicating whether the IPN was successfully processed or not.
  */
-function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array()) {
+function commerce_voguepay_process_ipn($payment_method = NULL, $debug_ipn = array()) {
   // Retrieve the IPN from $_POST if the caller did not supply an IPN array.
   // Note that Drupal has already run stripslashes() on the contents of the
   // $_POST array at this point, so we don't need to worry about them.
@@ -72,23 +72,23 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
 
     // Exit now if the $_POST was empty.
     if (empty($ipn)) {
-      watchdog('commerce_paypal', 'IPN URL accessed with no POST data submitted.', array(), WATCHDOG_WARNING);
+      watchdog('commerce_voguepay', 'IPN URL accessed with no POST data submitted.', array(), WATCHDOG_WARNING);
       return FALSE;
     }
 
-    // Prepare an array to POST back to PayPal to validate the IPN.
+    // Prepare an array to POST back to VoguePay to validate the IPN.
     $variables = array('cmd=_notify-validate');
 
     foreach ($ipn as $key => $value) {
       $variables[] = $key . '=' . urlencode($value);
     }
 
-    // Determine the proper PayPal server to POST to.
+    // Determine the proper VoguePay server to POST to.
     if (!empty($ipn['test_ipn']) && $ipn['test_ipn'] == 1) {
-      $host = 'https://www.sandbox.paypal.com/cgi-bin/webscr';
+      $host = 'https://voguepay.com/pay/';
     }
     else {
-      $host = 'https://www.paypal.com/cgi-bin/webscr';
+      $host = 'https://voguepay.com/pay/';
     }
 
     // Process the HTTP request to validate the IPN.
@@ -96,13 +96,13 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
 
     // If an error occurred during processing, log the message and exit.
     if (property_exists($response, 'error')) {
-      watchdog('commerce_paypal', 'Attempt to validate IPN failed with error @code: @error', array('@code' => $response->code, '@error' => $response->error), WATCHDOG_ERROR);
+      watchdog('commerce_voguepay', 'Attempt to validate IPN failed with error @code: @error', array('@code' => $response->code, '@error' => $response->error), WATCHDOG_ERROR);
       return FALSE;
     }
 
     // If the IPN was invalid, log a message and exit.
     if ($response->data == 'INVALID') {
-      watchdog('commerce_paypal', 'Invalid IPN received and ignored.', array(), WATCHDOG_ALERT);
+      watchdog('commerce_voguepay', 'Invalid IPN received and ignored.', array(), WATCHDOG_ALERT);
       return FALSE;
     }
   }
@@ -114,17 +114,17 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
   if (!empty($payment_method['settings']['ipn_logging']) &&
     $payment_method['settings']['ipn_logging'] == 'full_ipn') {
     if (!empty($ipn['txn_id'])) {
-      watchdog('commerce_paypal', 'Attempting to process IPN @txn_id. !ipn_log', array('@txn_id' => $ipn['txn_id'], '!ipn_log' => '<pre>' . check_plain(print_r($ipn, TRUE)) . '</pre>'), WATCHDOG_NOTICE);
+      watchdog('commerce_voguepay', 'Attempting to process IPN @txn_id. !ipn_log', array('@txn_id' => $ipn['txn_id'], '!ipn_log' => '<pre>' . check_plain(print_r($ipn, TRUE)) . '</pre>'), WATCHDOG_NOTICE);
     }
     else {
-      watchdog('commerce_paypal', 'Attempting to process an IPN. !ipn_log', array('!ipn_log' => '<pre>' . check_plain(print_r($ipn, TRUE)) . '</pre>'), WATCHDOG_NOTICE);
+      watchdog('commerce_voguepay', 'Attempting to process an IPN. !ipn_log', array('!ipn_log' => '<pre>' . check_plain(print_r($ipn, TRUE)) . '</pre>'), WATCHDOG_NOTICE);
     }
   }
 
   // Exit if the IPN has already been processed.
-  if (!empty($ipn['txn_id']) && $prior_ipn = commerce_paypal_ipn_load($ipn['txn_id'])) {
+  if (!empty($ipn['txn_id']) && $prior_ipn = commerce_voguepay_ipn_load($ipn['txn_id'])) {
     if ($prior_ipn['payment_status'] == $ipn['payment_status']) {
-      watchdog('commerce_paypal', 'Attempted to process an IPN that has already been processed with transaction ID @txn_id.', array('@txn_id' => $ipn['txn_id']), WATCHDOG_NOTICE);
+      watchdog('commerce_voguepay', 'Attempted to process an IPN that has already been processed with transaction ID @txn_id.', array('@txn_id' => $ipn['txn_id']), WATCHDOG_NOTICE);
       return FALSE;
     }
   }
@@ -149,7 +149,7 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
   // e-mail address and amount of the payment if possible. If a validate
   // function exists, it is responsible for setting its own watchdog message.
   if (!empty($payment_method)) {
-    $callback = $payment_method['base'] . '_paypal_ipn_validate';
+    $callback = $payment_method['base'] . '_voguepay_ipn_validate';
 
     // If a validator function existed...
     if (function_exists($callback)) {
@@ -162,7 +162,7 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
 
   // Give the payment method module an opportunity to process the IPN.
   if (!empty($payment_method)) {
-    $callback = $payment_method['base'] . '_paypal_ipn_process';
+    $callback = $payment_method['base'] . '_voguepay_ipn_process';
 
     // If a processing function existed...
     if (function_exists($callback)) {
@@ -170,7 +170,7 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
       // wasn't actually processed.
       if ($callback($order, $payment_method, $ipn) !== FALSE) {
         // Save the processed IPN details.
-        commerce_paypal_ipn_save($ipn);
+        commerce_voguepay_ipn_save($ipn);
       }
     }
   }
@@ -178,7 +178,7 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
   // Invoke the hook here so implementations have access to the order and
   // payment method if available and a saved IPN array that includes the payment
   // transaction ID if created in the payment method's default process callback.
-  module_invoke_all('commerce_paypal_ipn_process', $order, $payment_method, $ipn);
+  module_invoke_all('commerce_voguepay_ipn_process', $order, $payment_method, $ipn);
 }
 
 /**
@@ -188,13 +188,13 @@ function commerce_paypal_process_ipn($payment_method = NULL, $debug_ipn = array(
  *   The ID of the IPN to load.
  * @param $type
  *   The type of ID you've specified, either the serial numeric ipn_id or the
- *     actual PayPal txn_id. Defaults to txn_id.
+ *     actual VoguePay txn_id. Defaults to txn_id.
  *
  * @return
  *   The original IPN with some meta data related to local processing.
  */
-function commerce_paypal_ipn_load($id, $type = 'txn_id') {
-  return db_select('commerce_paypal_ipn', 'cpi')
+function commerce_voguepay_ipn_load($id, $type = 'txn_id') {
+  return db_select('commerce_voguepay_ipn', 'cpi')
     ->fields('cpi')
     ->condition('cpi.' . $type, $id)
     ->execute()
@@ -213,17 +213,17 @@ function commerce_paypal_ipn_load($id, $type = 'txn_id') {
  *     received by reference, it will also contain the serial numeric ipn_id
  *     used locally.
  */
-function commerce_paypal_ipn_save(&$ipn) {
-  if (!empty($ipn['ipn_id']) && commerce_paypal_ipn_load($ipn['txn_id'])) {
+function commerce_voguepay_ipn_save(&$ipn) {
+  if (!empty($ipn['ipn_id']) && commerce_voguepay_ipn_load($ipn['txn_id'])) {
     $ipn['changed'] = REQUEST_TIME;
 
-    return drupal_write_record('commerce_paypal_ipn', $ipn, 'ipn_id');
+    return drupal_write_record('commerce_voguepay_ipn', $ipn, 'ipn_id');
   }
   else {
     $ipn['created'] = REQUEST_TIME;
     $ipn['changed'] = REQUEST_TIME;
 
-    return drupal_write_record('commerce_paypal_ipn', $ipn);
+    return drupal_write_record('commerce_voguepay_ipn', $ipn);
   }
 }
 
@@ -234,10 +234,10 @@ function commerce_paypal_ipn_save(&$ipn) {
  *   The ID of the IPN to delete.
  * @param $type
  *   The type of ID you've specified, either the serial numeric ipn_id or the
- *     actual PayPal txn_id. Defaults to txn_id.
+ *     actual VoguePay txn_id. Defaults to txn_id.
  */
-function commerce_paypal_ipn_delete($id, $type = 'txn_id') {
-  db_delete('commerce_paypal_ipn')
+function commerce_voguepay_ipn_delete($id, $type = 'txn_id') {
+  db_delete('commerce_voguepay_ipn')
     ->condition($type, $id)
     ->execute();
 }
@@ -245,14 +245,14 @@ function commerce_paypal_ipn_delete($id, $type = 'txn_id') {
 /**
  * Returns a unique invoice number based on the Order ID and timestamp.
  */
-function commerce_paypal_ipn_invoice($order) {
+function commerce_voguepay_ipn_invoice($order) {
   return $order->order_id . '-' . REQUEST_TIME;
 }
 
 /**
  * Returns an appropriate message given a pending reason.
  */
-function commerce_paypal_ipn_pending_reason($pending_reason) {
+function commerce_voguepay_ipn_pending_reason($pending_reason) {
   switch ($pending_reason) {
     case 'address':
       return t('The payment is pending because your customer did not include a confirmed shipping address and your Payment Receiving Preferences is set to allow you to manually accept or deny each of these payments.');
@@ -267,7 +267,7 @@ function commerce_paypal_ipn_pending_reason($pending_reason) {
     case 'order':
       return t('You set the payment action to Order and have not yet captured funds.');
     case 'paymentreview':
-      return t('The payment is pending while it is being reviewed by PayPal for risk.');
+      return t('The payment is pending while it is being reviewed by VoguePay for risk.');
     case 'unilateral':
       return t('The payment is pending because it was made to an e-mail address that is not yet registered or confirmed.');
     case 'upgrade':
@@ -275,14 +275,14 @@ function commerce_paypal_ipn_pending_reason($pending_reason) {
     case 'verify':
       return t('The payment is pending because you are not yet verified.');
     case 'other':
-      return t('The payment is pending for a reason other than those listed above. For more information, contact PayPal Customer Service.');
+      return t('The payment is pending for a reason other than those listed above. For more information, contact VoguePay Customer Service.');
   }
 }
 
 /**
  * Returns an appropriate message given an AVS code.
  */
-function commerce_paypal_avs_code_message($code) {
+function commerce_voguepay_avs_code_message($code) {
   if (is_numeric($code)) {
     switch ($code) {
       case '0':
@@ -337,7 +337,7 @@ function commerce_paypal_avs_code_message($code) {
 /**
  * Returns an appropriate message given a CVV2 match code.
  */
-function commerce_paypal_cvv_match_message($code) {
+function commerce_voguepay_cvv_match_message($code) {
   if (is_numeric($code)) {
     switch ($code) {
       case '0':
@@ -374,13 +374,13 @@ function commerce_paypal_cvv_match_message($code) {
 }
 
 /**
- * Returns an array of PayPal payment method icon img elements.
+ * Returns an array of VoguePay payment method icon img elements.
  *
  * @return
  *   The array of themed payment method icons keyed by name: visa, mastercard,
- *   amex, discover, echeck, paypal
+ *   amex, discover, echeck, voguepay
  */
-function commerce_paypal_icons() {
+function commerce_voguepay_icons() {
   $icons = array();
 
   $payment_methods = array(
@@ -389,12 +389,12 @@ function commerce_paypal_icons() {
     'amex' => t('American Express'),
     'discover' => t('Discover'),
     'echeck' => t('eCheck'),
-    'paypal' => t('PayPal'),
+    'voguepay' => t('VoguePay'),
   );
 
   foreach ($payment_methods as $name => $title) {
     $variables = array(
-      'path' => drupal_get_path('module', 'commerce_paypal') . '/images/' . $name . '.gif',
+      'path' => drupal_get_path('module', 'commerce_voguepay') . '/images/' . $name . '.gif',
       'title' => $title,
       'alt' => $title,
       'attributes' => array(

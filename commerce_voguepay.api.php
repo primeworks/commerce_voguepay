@@ -56,6 +56,6 @@
  *
  * @see commerce_paypal_wps_paypal_ipn_process()
  */
-function hook_commerce_paypal_ipn_process($order, $payment_method, $ipn) {
+function hook_commerce_voguepay_ipn_process($order, $payment_method, $ipn) {
   // No example.
 }

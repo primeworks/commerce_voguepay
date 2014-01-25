@@ -2,17 +2,17 @@
 
 /**
  * @file
- * Installs the tables required by Commerce PayPal.
+ * Installs the tables required by Commerce VoguePay.
  */
 
 
 /**
  * Implements hook_schema().
  */
-function commerce_paypal_schema() {
+function commerce_voguepay_schema() {
   $schema = array();
 
-  $schema['commerce_paypal_ipn'] = array(
+  $schema['commerce_voguepay_ipn'] = array(
     'description' => 'Stores processed IPNs.',
     'fields' => array(
       'ipn_id' => array(
@@ -22,14 +22,14 @@ function commerce_paypal_schema() {
         'not null' => TRUE,
       ),
       'txn_id' => array(
-        'description' => 'The PayPal transaction ID.',
+        'description' => 'The VoguePay transaction ID.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
       ),
       'txn_type' => array(
-        'description' => 'The PayPal transaction type.',
+        'description' => 'The VoguePay transaction type.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -80,7 +80,7 @@ function commerce_paypal_schema() {
         'default' => '',
       ),
       'mc_fee' => array(
-        'description' => 'The amount of fees collected by PayPal for this payment.',
+        'description' => 'The amount of fees collected by VoguePay for this payment.',
         'type' => 'numeric',
         'size' => 'normal',
         'precision' => 10,
@@ -89,7 +89,7 @@ function commerce_paypal_schema() {
         'default' => 0,
       ),
       'payment_status' => array(
-        'description' => 'The status of the payment at PayPal.',
+        'description' => 'The status of the payment at VoguePay.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,

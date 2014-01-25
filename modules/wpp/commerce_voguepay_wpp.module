@@ -2,34 +2,34 @@
 
 /**
  * @file
- * Implements PayPal Website Payments Pro in Drupal Commerce checkout.
+ * Implements VoguePay Website Payments Pro in Drupal Commerce checkout.
  */
 
 
 /**
  * Implements hook_menu().
  */
-function commerce_paypal_wpp_menu() {
+function commerce_voguepay_wpp_menu() {
   $items = array();
 
   // Add a menu item for capturing authorizations.
   $items['admin/commerce/orders/%commerce_order/payment/%commerce_payment_transaction/paypal-wpp-capture'] = array(
     'title' => 'Capture',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('commerce_paypal_wpp_capture_form', 3, 5),
-    'access callback' => 'commerce_paypal_wpp_capture_access',
+    'page arguments' => array('commerce_voguepay_wpp_capture_form', 3, 5),
+    'access callback' => 'commerce_voguepay_wpp_capture_access',
     'access arguments' => array(3, 5),
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
     'weight' => 2,
-    'file' => 'includes/commerce_paypal_wpp.admin.inc',
+    'file' => 'includes/commerce_voguepay_wpp.admin.inc',
   );
 
   return $items;
 }
 
 /**
- * Determines access to the prior authorization capture form for PayPal WPP
+ * Determines access to the prior authorization capture form for VoguePay WPP
  * credit card transactions.
  *
  * @param $order
@@ -40,8 +40,8 @@ function commerce_paypal_wpp_menu() {
  * @return
  *   TRUE or FALSE indicating capture access.
  */
-function commerce_paypal_wpp_capture_access($order, $transaction) {
-  // Return FALSE if the transaction isn't for PayPal or isn't awaiting capture.
+function commerce_voguepay_wpp_capture_access($order, $transaction) {
+  // Return FALSE if the transaction isn't for VoguePay or isn't awaiting capture.
   if ($transaction->payment_method != 'paypal_wpp' || $transaction->remote_status != 'Authorization') {
     return FALSE;
   }
@@ -58,34 +58,34 @@ function commerce_paypal_wpp_capture_access($order, $transaction) {
 /**
  * Implements hook_commerce_payment_method_info().
  */
-function commerce_paypal_wpp_commerce_payment_method_info() {
+function commerce_voguepay_wpp_commerce_payment_method_info() {
   $payment_methods = array();
 
   $payment_methods['paypal_wpp'] = array(
-    'base' => 'commerce_paypal_wpp',
-    'title' => t('PayPal WPP - Credit Card'),
-    'short_title' => t('PayPal WPP'),
+    'base' => 'commerce_voguepay_wpp',
+    'title' => t('VoguePay WPP - Credit Card'),
+    'short_title' => t('VoguePay WPP'),
     'display_title' => t('Credit card'),
-    'description' => t('PayPal Website Payments Pro'),
+    'description' => t('VoguePay Website Payments Pro'),
   );
 
   return $payment_methods;
 }
 
 /**
- * Returns the default settings for the PayPal WPP payment method.
+ * Returns the default settings for the VoguePay WPP payment method.
  */
-function commerce_paypal_wpp_default_settings() {
+function commerce_voguepay_wpp_default_settings() {
   $default_currency = variable_get('commerce_default_currency', 'USD');
 
   return array(
-    'api_username' => '',
-    'api_password' => '',
-    'api_signature' => '',
-    'server' => 'sandbox',
+    'voguepay_username' => '',
+    'voguepay_password' => '',
+    'voguepay_demo_username' => '',
+    'server' => 'demo',
     'code' => TRUE,
     'card_types' => drupal_map_assoc(array('visa', 'mastercard', 'amex', 'discover')),
-    'currency_code' => in_array($default_currency, array_keys(commerce_paypal_wpp_currencies())) ? $default_currency : 'USD',
+    'currency_code' => in_array($default_currency, array_keys(commerce_voguepay_wpp_currencies())) ? $default_currency : 'USD',
     'allow_supported_currencies' => FALSE,
     'txn_type' => COMMERCE_CREDIT_AUTH_CAPTURE,
     'log' => array('request' => 0, 'response' => 0),
@@ -95,33 +95,33 @@ function commerce_paypal_wpp_default_settings() {
 /**
  * Payment method callback: settings form.
  */
-function commerce_paypal_wpp_settings_form($settings = array()) {
+function commerce_voguepay_wpp_settings_form($settings = array()) {
   module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
   $form = array();
 
   // Merge default settings into the stored settings array.
-  $settings = (array) $settings + commerce_paypal_wpp_default_settings();
+  $settings = (array) $settings + commerce_voguepay_wpp_default_settings();
 
-  $form['api_username'] = array(
+  $form['voguepay_username'] = array(
     '#type' => 'textfield',
-    '#title' => t('API username'),
-    '#default_value' => $settings['api_username'],
+    '#title' => t('VoguePay username'),
+    '#default_value' => $settings['voguepay_username'],
   );
-  $form['api_password'] = array(
+  $form['voguepay_password'] = array(
     '#type' => 'textfield',
     '#title' => t('API password'),
-    '#default_value' => $settings['api_password'],
+    '#default_value' => $settings['voguepay_password'],
   );
-  $form['api_signature'] = array(
+  $form['voguepay_demo_username'] = array(
     '#type' => 'textfield',
-    '#title' => t('Signature'),
-    '#default_value' => $settings['api_signature'],
+    '#title' => t('Demo username'),
+    '#default_value' => $settings['voguepay_demo_username'],
   );
   $form['server'] = array(
     '#type' => 'radios',
-    '#title' => t('PayPal server'),
+    '#title' => t('VoguePay server'),
     '#options' => array(
-      'sandbox' => ('Sandbox - use for testing, requires a PayPal Sandbox account'),
+      'demo' => ('Sandbox - use for testing, requires a VoguePay Demo account'),
       'live' => ('Live - use for processing real transactions'),
     ),
     '#default_value' => $settings['server'],
@@ -137,14 +137,14 @@ function commerce_paypal_wpp_settings_form($settings = array()) {
   $form['code'] = array(
     '#type' => 'checkbox',
     '#title' => t('Require the card security code (i.e. CVV) to process credit card transactions.'),
-    '#description' => t('This should match the similar setting in your PayPal account.'),
+    '#description' => t('This should match the similar setting in your VoguePay account.'),
     '#default_value' => $settings['code'],
   );
   $form['currency_code'] = array(
     '#type' => 'select',
     '#title' => t('Default currency'),
     '#description' => t('Transactions in other currencies will be converted to this currency, so multi-currency sites must be configured to use appropriate conversion rates.'),
-    '#options' => commerce_paypal_wpp_currencies(),
+    '#options' => commerce_voguepay_wpp_currencies(),
     '#default_value' => $settings['currency_code'],
   );
   $form['allow_supported_currencies'] = array(
@@ -178,9 +178,9 @@ function commerce_paypal_wpp_settings_form($settings = array()) {
 /**
  * Payment method callback: checkout form.
  */
-function commerce_paypal_wpp_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+function commerce_voguepay_wpp_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
   module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
-  $payment_method['settings'] += commerce_paypal_wpp_default_settings();
+  $payment_method['settings'] += commerce_voguepay_wpp_default_settings();
 
   // Prepare the fields to include on the credit card form.
   $fields = array();
@@ -212,7 +212,7 @@ function commerce_paypal_wpp_submit_form($payment_method, $pane_values, $checkou
 /**
  * Payment method callback: checkout form validation.
  */
-function commerce_paypal_wpp_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
+function commerce_voguepay_wpp_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
   module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
 
   // Validate the credit card fields.
@@ -228,42 +228,42 @@ function commerce_paypal_wpp_submit_form_validate($payment_method, $pane_form, $
 /**
  * Payment method callback: checkout form submission.
  */
-function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
-  // Display an error and prevent the payment attempt if PayPal WPP has not been
+function commerce_voguepay_wpp_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+  // Display an error and prevent the payment attempt if VoguePay WPP has not been
   // configured yet.
   if (empty($payment_method['settings'])) {
     drupal_set_message(t('This payment method must be configured by an administrator before it can be used.'), 'error');
     return FALSE;
   }
 
-  // Ensure we can determine a valid IPv4 IP address as required by PayPal WPP.
+  // Ensure we can determine a valid IPv4 IP address as required by VoguePay WPP.
   $ip_address = ip_address();
 
   // Go ahead and convert localhost from IPv6 to IPv4.
   if ($ip_address == '::1') {
     $ip_address = '127.0.0.1';
-    watchdog('commerce_paypal_wpp', 'PayPal WPP must be able to retrieve an IPv4 IP address from the ip_address() function when not testing payments from localhost. While testing from localhost, your IPv6 address ::1 was automatically converted to 127.0.0.1.', array(), WATCHDOG_WARNING);
+    watchdog('commerce_voguepay_wpp', 'VoguePay WPP must be able to retrieve an IPv4 IP address from the ip_address() function when not testing payments from localhost. While testing from localhost, your IPv6 address ::1 was automatically converted to 127.0.0.1.', array(), WATCHDOG_WARNING);
   }
 
   if (!filter_var($ip_address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
     drupal_set_message(t('This payment method is not supported by the current web server configuration.'), 'error');
-    watchdog('commerce_paypal_wpp', 'PayPal WPP must be able to retrieve an IPv4 IP address from the ip_address() function when not testing payments from localhost.', array(), WATCHDOG_ERROR);
+    watchdog('commerce_voguepay_wpp', 'VoguePay WPP must be able to retrieve an IPv4 IP address from the ip_address() function when not testing payments from localhost.', array(), WATCHDOG_ERROR);
     return FALSE;
   }
 
   // Determine the currency code to use to actually process the transaction,
   // which will either be the default currency code or the currency code of the
-  // charge if it's supported by PayPal if that option is enabled.
+  // charge if it's supported by VoguePay if that option is enabled.
   $currency_code = $payment_method['settings']['currency_code'];
 
-  if (!empty($payment_method['settings']['allow_supported_currencies']) && in_array($charge['currency_code'], array_keys(commerce_paypal_wpp_currencies()))) {
+  if (!empty($payment_method['settings']['allow_supported_currencies']) && in_array($charge['currency_code'], array_keys(commerce_voguepay_wpp_currencies()))) {
     $currency_code = $charge['currency_code'];
   }
 
   // Convert the charge amount to the specified currency.
   $amount = commerce_currency_convert($charge['amount'], $charge['currency_code'], $currency_code);
 
-  // PayPal WPP requires a billing address, so ensure one has been added to the
+  // VoguePay WPP requires a billing address, so ensure one has been added to the
   // order before building the name-value pair array.
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
   $valid_billing_address = TRUE;
@@ -272,7 +272,7 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
     $valid_billing_address = FALSE;
   }
   else {
-    // Check the values in the billing address array required by PayPal.
+    // Check the values in the billing address array required by VoguePay.
     $address_value = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
 
     if (empty($address_value['name_line']) && empty($address_value['first_name'])) {
@@ -300,10 +300,10 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
     $transaction->currency_code = $currency_code;
     $transaction->payload[REQUEST_TIME] = array();
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-    $transaction->message = t('The customer must be able to supply a billing address through the default address field of the core billing information customer profile to pay via PayPal WPP.');
+    $transaction->message = t('The customer must be able to supply a billing address through the default address field of the core billing information customer profile to pay via VoguePay WPP.');
     commerce_payment_transaction_save($transaction);
 
-    watchdog('commerce_paypal_wpp', 'A PayPal WPP transaction failed because the order did not have a value for the default billing address field. Your order or checkout configuration may need to be adjusted to support credit card payment via PayPal WPP.', NULL, WATCHDOG_ERROR);
+    watchdog('commerce_voguepay_wpp', 'A VoguePay WPP transaction failed because the order did not have a value for the default billing address field. Your order or checkout configuration may need to be adjusted to support credit card payment via VoguePay WPP.', NULL, WATCHDOG_ERROR);
 
     return FALSE;
   }
@@ -311,10 +311,10 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
   // Build a name-value pair array for this transaction.
   $nvp = array(
     'METHOD' => 'DoDirectPayment',
-    'PAYMENTACTION' => commerce_paypal_wpp_payment_action($payment_method['settings']['txn_type']),
-    'NOTIFYURL' => commerce_paypal_ipn_url($payment_method['instance_id']),
+    'PAYMENTACTION' => commerce_voguepay_wpp_payment_action($payment_method['settings']['txn_type']),
+    'NOTIFYURL' => commerce_voguepay_ipn_url($payment_method['instance_id']),
 
-    'CREDITCARDTYPE' => commerce_paypal_wpp_card_type($pane_values['credit_card']['type']),
+    'CREDITCARDTYPE' => commerce_voguepay_wpp_card_type($pane_values['credit_card']['type']),
     'ACCT' => $pane_values['credit_card']['number'],
     'EXPDATE' => $pane_values['credit_card']['exp_month'] . $pane_values['credit_card']['exp_year'],
     'AMT' => commerce_currency_amount_to_decimal($amount, $currency_code),
@@ -376,8 +376,8 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
     'ZIP' => substr($billing_address['postal_code'], 0, 20),
   );
 
-  // Submit the request to PayPal.
-  $response = commerce_paypal_wpp_request($payment_method, $nvp, $order);
+  // Submit the request to VoguePay.
+  $response = commerce_voguepay_wpp_request($payment_method, $nvp, $order);
 
   // Prepare a transaction object to log the API response.
   $transaction = commerce_payment_transaction_new('paypal_wpp', $order->order_id);
@@ -388,7 +388,7 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
 
   // Build a meaningful response message.
   $message = array();
-  $action = commerce_paypal_wpp_reverse_payment_action($nvp['PAYMENTACTION']);
+  $action = commerce_voguepay_wpp_reverse_payment_action($nvp['PAYMENTACTION']);
 
   // Set the remote ID and transaction status based on the acknowledgment code.
   switch ($response['ACK']) {
@@ -417,12 +417,12 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
 
       // Add the AVS response if present.
       if (!empty($response['AVSCODE'])) {
-        $message[] = t('AVS response: @avs', array('@avs' => commerce_paypal_avs_code_message($response['AVSCODE'])));
+        $message[] = t('AVS response: @avs', array('@avs' => commerce_voguepay_avs_code_message($response['AVSCODE'])));
       }
 
       // Add the CVV response if present.
       if ($payment_method['settings']['code'] && !empty($response['CVV2MATCH'])) {
-        $message[] = t('CVV2 match: @cvv', array('@cvv' => commerce_paypal_cvv_match_message($response['CVV2MATCH'])));
+        $message[] = t('CVV2 match: @cvv', array('@cvv' => commerce_voguepay_cvv_match_message($response['CVV2MATCH'])));
       }
 
       break;
@@ -453,28 +453,28 @@ function commerce_paypal_wpp_submit_form_submit($payment_method, $pane_form, $pa
 }
 
 /**
- * Submits a PayPal WPP API request to PayPal.
+ * Submits a VoguePay WPP API request to VoguePay.
  *
  * @param $payment_method
  *   The payment method instance array associated with this API request.
  * @param $nvp
  *   The set of name-value pairs describing the transaction to submit.
  */
-function commerce_paypal_wpp_request($payment_method, $nvp = array(), $order = NULL) {
+function commerce_voguepay_wpp_request($payment_method, $nvp = array(), $order = NULL) {
   // Get the API endpoint URL for the method's transaction mode.
-  $url = commerce_paypal_wpp_server_url($payment_method['settings']['server']);
+  $url = commerce_voguepay_wpp_server_url($payment_method['settings']['server']);
 
   // Add the default name-value pairs to the array.
   $nvp += array(
     // API credentials
     'USER' => $payment_method['settings']['api_username'],
     'PWD' => $payment_method['settings']['api_password'],
-    'SIGNATURE' => $payment_method['settings']['api_signature'],
+    'DEMOUSER' => $payment_method['settings']['api_signature'],
     'VERSION' => '76.0',
   );
 
   // Allow modules to alter parameters of the API request.
-  drupal_alter('commerce_paypal_wpp_request', $nvp, $order);
+  drupal_alter('commerce_voguepay_wpp_request', $nvp, $order);
 
   // Log the request if specified.
   if ($payment_method['settings']['log']['request'] == 'request') {
@@ -491,7 +491,7 @@ function commerce_paypal_wpp_request($payment_method, $nvp = array(), $order = N
       $log_nvp['CVV2'] = str_repeat('X', strlen($log_nvp['CVV2']));
     }
 
-    watchdog('commerce_paypal', 'PayPal WPP request to @url: !param', array('@url' => $url, '!param' => '<pre>' . check_plain(print_r($log_nvp, TRUE)) . '</pre>'), WATCHDOG_DEBUG);
+    watchdog('commerce_voguepay', 'VoguePay WPP request to @url: !param', array('@url' => $url, '!param' => '<pre>' . check_plain(print_r($log_nvp, TRUE)) . '</pre>'), WATCHDOG_DEBUG);
   }
 
   // Prepare the name-value pair array to be sent as a string.
@@ -515,7 +515,7 @@ function commerce_paypal_wpp_request($payment_method, $nvp = array(), $order = N
 
   // Log any errors to the watchdog.
   if ($error = curl_error($ch)) {
-    watchdog('commerce_paypal', 'cURL error: @error', array('@error' => $error), WATCHDOG_ERROR);
+    watchdog('commerce_voguepay', 'cURL error: @error', array('@error' => $error), WATCHDOG_ERROR);
     return FALSE;
   }
   curl_close($ch);
@@ -530,38 +530,38 @@ function commerce_paypal_wpp_request($payment_method, $nvp = array(), $order = N
 
   // Log the response if specified.
   if ($payment_method['settings']['log']['response'] == 'response') {
-    watchdog('commerce_paypal', 'PayPal WPP response: !param', array('!param' => '<pre>' . check_plain(print_r($response, TRUE)) . '</pre>', WATCHDOG_DEBUG));
+    watchdog('commerce_voguepay', 'VoguePay WPP response: !param', array('!param' => '<pre>' . check_plain(print_r($response, TRUE)) . '</pre>', WATCHDOG_DEBUG));
   }
 
   return $response;
 }
 
 /**
- * Returns the URL to the specified PayPal WPP server.
+ * Returns the URL to the specified VoguePay WPP server.
  *
  * @param $server
- *   Either sandbox or live indicating which server to get the URL for.
+ *   Either demo or live indicating which server to get the URL for.
  *
  * @return
- *   The URL to use to submit requests to the PayPal WPP server.
+ *   The URL to use to submit requests to the VoguePay WPP server.
  */
-function commerce_paypal_wpp_server_url($server) {
+function commerce_voguepay_wpp_server_url($server) {
   switch ($server) {
-    case 'sandbox':
-      return 'https://api-3t.sandbox.paypal.com/nvp';
+    case 'demo':
+      return 'https://voguepay.com/pay/';
     case 'live':
-      return 'https://api-3t.paypal.com/nvp';
+      return 'https://voguepay.com/pay/';
   }
 }
 
 /**
- * Returns the relevant PayPal payment action for a given transaction type.
+ * Returns the relevant VoguePay payment action for a given transaction type.
  *
  * @param $txn_type
  *   The type of transaction whose payment action should be returned; currently
  *   supports COMMERCE_CREDIT_AUTH_CAPTURE and COMMERCE_CREDIT_AUTH_ONLY.
  */
-function commerce_paypal_wpp_payment_action($txn_type) {
+function commerce_voguepay_wpp_payment_action($txn_type) {
   switch ($txn_type) {
     case COMMERCE_CREDIT_AUTH_ONLY:
       return 'Authorization';
@@ -571,9 +571,9 @@ function commerce_paypal_wpp_payment_action($txn_type) {
 }
 
 /**
- * Returns the description of a transaction type for a PayPal WPP payment action.
+ * Returns the description of a transaction type for a VoguePay WPP payment action.
  */
-function commerce_paypal_wpp_reverse_payment_action($payment_action) {
+function commerce_voguepay_wpp_reverse_payment_action($payment_action) {
   switch (strtoupper($payment_action)) {
     case 'AUTHORIZATION':
       return t('Authorization only');
@@ -583,9 +583,9 @@ function commerce_paypal_wpp_reverse_payment_action($payment_action) {
 }
 
 /**
- * Returns the value for a credit card type expected by PayPal.
+ * Returns the value for a credit card type expected by VoguePay.
  */
-function commerce_paypal_wpp_card_type($card_type) {
+function commerce_voguepay_wpp_card_type($card_type) {
   switch ($card_type) {
     case 'visa':
       return 'Visa';
@@ -605,6 +605,6 @@ function commerce_paypal_wpp_card_type($card_type) {
 /**
  * Returns an array of all possible Direct Payment currency codes.
  */
-function commerce_paypal_wpp_currencies() {
+function commerce_voguepay_wpp_currencies() {
   return drupal_map_assoc(array('AUD', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'HKD', 'HUF', 'JPY', 'NOK', 'NZD', 'PLN', 'SEK', 'SGD', 'USD'));
 }

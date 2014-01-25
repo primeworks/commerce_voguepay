@@ -2,14 +2,14 @@
 
 /**
  * @file
- * Administrative forms for the PayPal WPP module.
+ * Administrative forms for the VoguePay WPP module.
  */
 
 
 /**
  * Form callback: allows the user to capture a prior authorization.
  */
-function commerce_paypal_wpp_capture_form($form, &$form_state, $order, $transaction) {
+function commerce_voguepay_wpp_capture_form($form, &$form_state, $order, $transaction) {
   $form_state['order'] = $order;
   $form_state['transaction'] = $transaction;
 
@@ -64,7 +64,7 @@ function commerce_paypal_wpp_capture_form($form, &$form_state, $order, $transact
 /**
  * Validate handler: ensure a valid amount is given.
  */
-function commerce_paypal_wpp_capture_form_validate($form, &$form_state) {
+function commerce_voguepay_wpp_capture_form_validate($form, &$form_state) {
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
 
@@ -73,17 +73,17 @@ function commerce_paypal_wpp_capture_form_validate($form, &$form_state) {
     form_set_error('amount', t('You must specify a positive numeric amount to capture.'));
   }
 
-  // Ensure the amount is within the allowed limit for PayPal authorizations.
+  // Ensure the amount is within the allowed limit for VoguePay authorizations.
   $authorization_amount = commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code);
-  $authorization_amount_upper = commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code) + 75;
+  $authorization_amount_upper = commerce_currency_amount_to_decimal($transaction->amount + 75, $transaction->currency_code);
 
   if ($amount > $authorization_amount * 1.15 || $amount > $authorization_amount_upper) {
-    form_set_error('amount', t('You cannot capture an amount $75 or 115% greater than the authorization amount in PayPal WPP.'));
+    form_set_error('amount', t('You cannot capture an amount $75 or 115% greater than the authorization amount in VoguePay WPP.'));
   }
 
   // If the authorization has expired, display an error message and redirect.
   if (REQUEST_TIME - $transaction->created > 86400 * 29) {
-    drupal_set_message(t('This authorization has passed its 29 day limit and cannot be captured.'), 'error');
+    drupal_set_message(t('This authorization has passed its 29 day limit cannot be captured.'), 'error');
     drupal_goto('admin/commerce/orders/' . $form_state['order']->order_id . '/payment');
   }
 }
@@ -91,7 +91,7 @@ function commerce_paypal_wpp_capture_form_validate($form, &$form_state) {
 /**
  * Submit handler: process a prior authorization capture via WPP.
  */
-function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
+function commerce_voguepay_wpp_capture_form_submit($form, &$form_state) {
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
 
@@ -99,7 +99,7 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
   $payment_method = $form_state['payment_method'];
   $authorization_valid = TRUE;
 
-  // If the original authorization was more than 3 days ago, PayPal's honor
+  // If the original authorization was more than 3 days ago, VoguePay's honor
   // period is over and a reauthorization is required before capturing.
   if (REQUEST_TIME - $transaction->created > 86400 * 3) {
     // Build a name-value pair array for the reauthorization.
@@ -111,7 +111,7 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
     );
 
     // Submit the reauthorization request.
-    $response = commerce_paypal_wpp_request($payment_method, $nvp, $order);
+    $response = commerce_voguepay_wpp_request($payment_method, $nvp, $order);
     $transaction->payload[REQUEST_TIMESTAMP . '-reauthorization'] = $response;
 
     // If the response contains an authorization ID...
@@ -125,7 +125,7 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
       $authorization_valid = FALSE;
 
       // Display a failure message on the redirect.
-      drupal_set_message(t('PayPal requires a reauthorization before capture after 3 days have passed since the initial authorization.'), 'error');
+      drupal_set_message(t('VoguePay requires a reauthorization before capture after 3 days have passed since the initial authorization.'), 'error');
       drupal_set_message(t('Reauthorization failed with the following error, so the transaction could not capture and will remain in a pending status.'), 'error');
       drupal_set_message(check_plain($response['L_LONGMESSAGE0']), 'error');
     }
@@ -145,8 +145,8 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
       'COMPLETETYPE' => $transaction_balance > 0 ? 'NotComplete' : 'Complete',
     );
 
-    // Submit the capture request request to PayPal.
-    $response = commerce_paypal_wpp_request($payment_method, $nvp, $order);
+    // Submit the capture request request to VoguePay.
+    $response = commerce_voguepay_wpp_request($payment_method, $nvp, $order);
     $transaction->payload[REQUEST_TIME . '-capture'] = $response;
 
     switch ($response['ACK']) {
@@ -163,7 +163,7 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
           $new_transaction->amount = $transaction_balance;
           commerce_payment_transaction_save($new_transaction);
 
-          drupal_set_message(t("A follow-up transaction was made to represent the remaining authorization amount that can be captured within PayPal's allowed time limit."));
+          drupal_set_message(t("A follow-up transaction was made to represent the remaining authorization amount that can be captured within VoguePay's allowed time limit."));
         }
 
         // Update the original transaction amount to the actual capture amount,
@@ -182,7 +182,7 @@ function commerce_paypal_wpp_capture_form_submit($form, &$form_state) {
         // Display an error message but leave the transaction pending.
         drupal_set_message(t('Prior authorization capture failed, so the transaction will remain in a pending status.'), 'error');
         drupal_set_message(check_plain($response['L_LONGMESSAGE0']), 'error');
-        break;
+        $transaction->payload[REQUEST_TIME . '-capture'] = $response;
     }
   }
 
