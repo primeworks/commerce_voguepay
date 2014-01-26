@@ -131,25 +131,7 @@ function commerce_voguepay_wps_submit_form($payment_method, $pane_values, $check
 
   $amount = commerce_currency_amount_to_decimal($wrapper->commerce_order_total->amount->value());
   $amount = floor($amount);
-  dsm ('Saved');
 
-
-    global $base_url ;
-    $merchant_id = $payment_method['settings']['merchant_id'];
-    $form['voguepay_wps_information'] = array(
-      //'#markup' => '<span class="commerce-paypal-wps-info">' . t('(Continue with checkout to complete payment via VoguePay.)') . '</span>',
-      '#markup' => '<form method="POST" action="https://voguepay.com/pay/">
-            <input type="hidden" name="v_merchant_id" value="'. $merchant_id. '" />
-            <input type="hidden" name="memo" value="' .$amount. '" />
-            <input type="hidden" name="item_1" value="' .$amount . '" />
-            <input type="hidden" name="description_1" value="'. $amount. '" />
-            <input type="hidden" name="price_1" value="' .$amount . '" />
-            <input type="hidden" name="total" value="' .$amount . '" />
-            <input type="hidden" name="notify_url" value="'. $base_url. '/uc_voguepay/notify" />
-        <input type="hidden" name="success_url" value="'. $base_url. '/uc_voguepay/complete" />
-            <input type="image" src="' .$button . '" alt="Pay with VoguePay'. $amount.'" />
-            </form>',
-    );
   }
 
   return $form;
@@ -302,31 +284,31 @@ function commerce_voguepay_wps_voguepay_ipn_process($order, $payment_method, &$i
   // If we didn't get an approval response code...
 
 
-  switch ($txn['status']) {
+  switch ($transaction['status']) {
     case 'Failed':
-      $txn->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-      $txn->message = t("The payment has failed. This happens only if the payment was made from your customer’s bank account.");
+      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $transaction->message = t("The payment has failed. This happens only if the payment was made from your customer’s bank account.");
       break;
 
     case 'Voided':
-      $txn->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-      $txn->message = t('The authorization was voided.');
+      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $transaction->message = t('The authorization was voided.');
       break;
 
     case 'Pending':
-      $txn->status = COMMERCE_PAYMENT_STATUS_PENDING;
-      $txn->message = commerce_voguepay_ipn_pending_reason($ipn['pending_reason']);
+      $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
+      $transaction->message = commerce_voguepay_ipn_pending_reason($ipn['pending_reason']);
       break;
 
     case 'Approved':
-      $txn->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $txn->message = t('The payment has completed.');
+      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $transaction->message = t('The payment has completed.');
       dsm('Saved');
       break;
 
     case 'Refunded':
-      $txn->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $txn->message = t('Refund for transaction @txn_id', array('@txn_id' => $ipn['parent_txn_id']));
+      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $transaction->message = t('Refund for transaction @txn_id', array('@txn_id' => $ipn['parent_txn_id']));
       break;
   }
 
