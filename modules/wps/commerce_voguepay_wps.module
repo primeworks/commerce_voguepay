@@ -131,6 +131,7 @@ function commerce_voguepay_wps_submit_form($payment_method, $pane_values, $check
 
   $amount = commerce_currency_amount_to_decimal($wrapper->commerce_order_total->amount->value());
   $amount = floor($amount);
+  dsm ('Saved');
 
 
     global $base_url ;
@@ -221,10 +222,14 @@ function commerce_voguepay_wps_redirect_form_validate($order, $payment_method) {
 function commerce_voguepay_wps_voguepay_ipn_validate($order, $payment_method, $ipn) {
   // Return FALSE if the receiver e-mail does not match the one specified by
   // the payment method instance.
-  if (trim(strtolower($ipn['receiver_email'])) != trim(strtolower($payment_method['settings']['merchant_id']))) {
+  $json = file_get_contents('https://voguepay.com/?v_transaction_id='.$_POST['transaction_id'].'&type=json');
+    //create new array to store our transaction detail
+  $txn = json_decode($json, true);
+  if($txn['status'] != 'Approved') {
     commerce_payment_redirect_pane_previous_page($order);
     watchdog('commerce_voguepay_wps', 'IPN rejected: invalid receiver e-mail specified (@receiver_email); must match the primary e-mail address on the VoguePay account.', array('@receiver_email' => $ipn['receiver_email']), WATCHDOG_NOTICE);
     return FALSE;
+    dsm ('Failed');
   }
 
   // Prepare the IPN data for inclusion in the watchdog message if enabled.
@@ -251,15 +256,27 @@ function commerce_voguepay_wps_voguepay_ipn_process($order, $payment_method, &$i
   // Do not perform any processing on WPS transactions here that do not have
   // transaction IDs, indicating they are non-payment IPNs such as those used
   // for subscription signup requests.
-  if (empty($ipn['txn_id'])) {
+  if (!isset($_POST['transaction_id'])) {
     return FALSE;
   }
+  else {
+  	dsm ('Score');
+  	$transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+    $transaction->message = t('The payment has completed.');
+  }
+
+
+  $json = file_get_contents('https://voguepay.com/?v_transaction_id='.$_POST['transaction_id'].'&type=json');
+    //create new array to store our transaction detail
+    $txn = json_decode($json, true);
+
 
   // Exit when we don't get a payment status we recognize.
-  if (!in_array($ipn['payment_status'], array('Failed', 'Voided', 'Pending', 'Completed', 'Refunded'))) {
+  if($txn['total'] == 0) {
     commerce_payment_redirect_pane_previous_page($order);
     return FALSE;
   }
+
 
   // If this is a prior authorization capture IPN for which we've already
   // created a transaction...
@@ -280,33 +297,36 @@ function commerce_voguepay_wps_voguepay_ipn_process($order, $payment_method, &$i
   $transaction->payload[REQUEST_TIME] = $ipn;
 
   // Set the transaction's statuses based on the IPN's payment_status.
-  $transaction->remote_status = $ipn['payment_status'];
+  $transaction->remote_status = $txn['status'];
 
   // If we didn't get an approval response code...
-  switch ($ipn['payment_status']) {
+
+
+  switch ($txn['status']) {
     case 'Failed':
-      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-      $transaction->message = t("The payment has failed. This happens only if the payment was made from your customer’s bank account.");
+      $txn->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $txn->message = t("The payment has failed. This happens only if the payment was made from your customer’s bank account.");
       break;
 
     case 'Voided':
-      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-      $transaction->message = t('The authorization was voided.');
+      $txn->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $txn->message = t('The authorization was voided.');
       break;
 
     case 'Pending':
-      $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
-      $transaction->message = commerce_voguepay_ipn_pending_reason($ipn['pending_reason']);
+      $txn->status = COMMERCE_PAYMENT_STATUS_PENDING;
+      $txn->message = commerce_voguepay_ipn_pending_reason($ipn['pending_reason']);
       break;
 
-    case 'Completed':
-      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $transaction->message = t('The payment has completed.');
+    case 'Approved':
+      $txn->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $txn->message = t('The payment has completed.');
+      dsm('Saved');
       break;
 
     case 'Refunded':
-      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $transaction->message = t('Refund for transaction @txn_id', array('@txn_id' => $ipn['parent_txn_id']));
+      $txn->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $txn->message = t('Refund for transaction @txn_id', array('@txn_id' => $ipn['parent_txn_id']));
       break;
   }
 
