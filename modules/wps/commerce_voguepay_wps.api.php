@@ -2,12 +2,12 @@
 
 /**
  * @file
- * Hook documentation for the PayPal WPS module.
+ * Hook documentation for the VoguePay WPS module.
  */
 
 
 /**
- * Allows modules to alter the data array used to create a PayPal WPS redirect
+ * Allows modules to alter the data array used to create a VoguePay WPS redirect
  * form prior to its form elements being created.
  *
  * @param &$data
@@ -15,6 +15,6 @@
  * @param $order
  *   The full order object the redirect form is being generated for.
  */
-function hook_commerce_paypal_wps_order_form_data_alter(&$data, $order) {
+function hook_commerce_voguepay_wps_order_form_data_alter(&$data, $order) {
   // No example.
 }

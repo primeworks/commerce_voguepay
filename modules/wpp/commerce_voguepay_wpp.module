@@ -65,11 +65,20 @@ function commerce_voguepay_wpp_commerce_payment_method_info() {
     'base' => 'commerce_voguepay_wpp',
     'title' => t('VoguePay WPP - Credit Card'),
     'short_title' => t('VoguePay WPP'),
-    'display_title' => t('Credit card'),
+    'display_title' => t('Credit cards'),
     'description' => t('VoguePay Website Payments Pro'),
   );
 
   return $payment_methods;
+  //TODO Remove this block of code completely.
+
+
+  //TODO Create the hidden form values to catch the cart values
+  //Inserting the code from uc_voguepay to see if we can capture the amount value and parse payment.
+
+
+
+
 }
 
 /**
@@ -79,9 +88,9 @@ function commerce_voguepay_wpp_default_settings() {
   $default_currency = variable_get('commerce_default_currency', 'USD');
 
   return array(
-    'voguepay_username' => '',
-    'voguepay_password' => '',
-    'voguepay_demo_username' => '',
+    'merchant_id' => '',
+    'merchant_key' => '',
+    'demo_merchant_id' => '',
     'server' => 'demo',
     'code' => TRUE,
     'card_types' => drupal_map_assoc(array('visa', 'mastercard', 'amex', 'discover')),
@@ -102,20 +111,20 @@ function commerce_voguepay_wpp_settings_form($settings = array()) {
   // Merge default settings into the stored settings array.
   $settings = (array) $settings + commerce_voguepay_wpp_default_settings();
 
-  $form['voguepay_username'] = array(
+  $form['merchant_id'] = array(
     '#type' => 'textfield',
-    '#title' => t('VoguePay username'),
-    '#default_value' => $settings['voguepay_username'],
+    '#title' => t('Merchant ID'),
+    '#default_value' => $settings['merchant_id'],
   );
-  $form['voguepay_password'] = array(
+  $form['merchant_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('API password'),
-    '#default_value' => $settings['voguepay_password'],
+    '#title' => t('Merchant key'),
+    '#default_value' => $settings['merchant_key'],
   );
-  $form['voguepay_demo_username'] = array(
+  $form['demo_merchant_id'] = array(
     '#type' => 'textfield',
-    '#title' => t('Demo username'),
-    '#default_value' => $settings['voguepay_demo_username'],
+    '#title' => t('Demo merchant ID'),
+    '#default_value' => $settings['demo_merchant_id'],
   );
   $form['server'] = array(
     '#type' => 'radios',
@@ -125,20 +134,6 @@ function commerce_voguepay_wpp_settings_form($settings = array()) {
       'live' => ('Live - use for processing real transactions'),
     ),
     '#default_value' => $settings['server'],
-  );
-  $form['card_types'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Limit accepted credit cards to the following types'),
-    '#description' => t('American Express is not available in the UK. Only MasterCard and Visa are available in Canada. If you enable Maestro or Solo, you must use GBP as your currency code.'),
-    '#options' => array_intersect_key(commerce_payment_credit_card_types(), drupal_map_assoc(array('visa', 'mastercard', 'amex', 'discover', 'maestro', 'solo'))),
-    '#default_value' => $settings['card_types'],
-    '#required' => TRUE,
-  );
-  $form['code'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Require the card security code (i.e. CVV) to process credit card transactions.'),
-    '#description' => t('This should match the similar setting in your VoguePay account.'),
-    '#default_value' => $settings['code'],
   );
   $form['currency_code'] = array(
     '#type' => 'select',
@@ -153,24 +148,29 @@ function commerce_voguepay_wpp_settings_form($settings = array()) {
     '#description' => t('Transactions in unsupported currencies will still be converted into the default currency.'),
     '#default_value' => $settings['allow_supported_currencies'],
   );
-  $form['txn_type'] = array(
-    '#type' => 'radios',
-    '#title' => t('Default credit card transaction type'),
-    '#description' => t('The default will be used to process transactions during checkout.'),
-    '#options' => array(
-      COMMERCE_CREDIT_AUTH_CAPTURE => t('Authorization and capture'),
-      COMMERCE_CREDIT_AUTH_ONLY => t('Authorization only (requires manual or automated capture after checkout)'),
-    ),
-    '#default_value' => $settings['txn_type'],
+  $form['button'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Button settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
   );
-  $form['log'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Log the following messages for debugging'),
-    '#options' => array(
-      'request' => t('API request messages'),
-      'response' => t('API response messages'),
-    ),
-    '#default_value' => $settings['log'],
+  $form['button']['uc_voguepay_button_color'] = array(
+    '#type' => 'radios',
+    '#title' => t('Button background color'),
+    '#default_value' => variable_get('uc_voguepay_button_color', 'trans'),
+    '#options' => array('trans' => t('Transparent'), 'white' => t('White')),
+  );
+  $form['button']['uc_voguepay_button_size'] = array(
+    '#type' => 'select',
+    '#title' => t('Button size'),
+    '#options' => array('large' => t('Large'), 'medium' => t('Medium'), 'small' => t('Small')),
+    '#default_value' => variable_get('uc_voguepay_button_size', 'large'),
+  );
+  $form['button']['uc_voguepay_button_align'] = array(
+    '#type' => 'radios',
+    '#title' => t('Button alignment'),
+    '#default_value' => variable_get('uc_voguepay_button_align', 'right'),
+    '#options' => array('right' => t('Right'), 'left' => t('Left')),
   );
   return $form;
 }
@@ -178,7 +178,8 @@ function commerce_voguepay_wpp_settings_form($settings = array()) {
 /**
  * Payment method callback: checkout form.
  */
-function commerce_voguepay_wpp_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+ //TODO Remove the credit card section on this page
+function commerce_voguepay_wpp_submit_form($payment_method, $pane_values, $checkout_pane, $order, $charge) {
   module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
   $payment_method['settings'] += commerce_voguepay_wpp_default_settings();
 
@@ -187,7 +188,7 @@ function commerce_voguepay_wpp_submit_form($payment_method, $pane_values, $check
 
   // Include the card security code field if specified.
   if ($payment_method['settings']['code']) {
-    $fields['code'] = '';
+    $fields['code'] = '200';
   }
 
   // Add the credit card types array if necessary.
@@ -206,8 +207,65 @@ function commerce_voguepay_wpp_submit_form($payment_method, $pane_values, $check
     );
   }
 
-  return commerce_payment_credit_card_form($fields);
+
+  return commerce_payment_credit_card_form();
+
 }
+
+/**
+ * Alter the review form. Let's see if we can slip in a few variables
+ */
+function commerce_voguepay_wpp_commerce_checkout_page_info_alter(&$checkout_pages, $order, $charge,$payment_method) {
+
+
+  //ENTER THE PATCH
+    /**
+   * The block below is borrowed from commerce_voguepay_wpp_request
+   * It helps us inherit variables
+   */
+
+  // Convert the charge amount to the specified currency.
+  $amount = $charge ['amount' ];
+
+  /**
+   * The next block takes the variables in the previous blocks and parses them to the form
+   */
+
+  //TODO Get all the components of the form to work
+  global $base_url ;
+  $settings = variable_get( 'commerce_voguepay_wpp_settings_form' , '');
+  $merchant_id = commerce_voguepay_wpp_default_settings($payment_method [ 'settings'][ 'merchant_id']);
+  $merchant_key = commerce_voguepay_wpp_default_settings($payment_method [ 'settings'][ 'merchant_key']);
+  $demo_merchant_id = commerce_voguepay_wpp_default_settings($payment_method [ 'settings'][ 'demo_merchant_id']);
+  $price = commerce_currency_convert( $charge ['amount' ]);
+  $alternate_button = variable_get( 'vogue_custom' ,'' );
+  $button_color = variable_get( 'vogue_color' ,'blue' );
+  $button = empty ($alternate_button ) ? 'http://voguepay.com/images/buttons/buynow_' .$button_color . '.png' : $alternate_button ;
+
+  //The form below takes the values in the order and sends them to voguepay
+  $f = '<form method="POST" action="https://voguepay.com/pay/">
+            <input type="hidden" name="v_merchant_id" value="'. $merchant_id. '" />
+            <input type="hidden" name="memo" value="' .$price. '" />
+            <input type="hidden" name="item_1" value="' .$price . '" />
+            <input type="hidden" name="description_1" value="'. $price. '" />
+            <input type="hidden" name="price_1" value="' .$price . '" />
+            <input type="hidden" name="total" value="' .$price . '" />
+            <input type="hidden" name="notify_url" value="'. $base_url. '/uc_voguepay/notify" />
+        <input type="hidden" name="success_url" value="'. $base_url. '/uc_voguepay/complete" />
+            <input type="image" src="' .$button . '" alt="Pay with VoguePay" />
+            </form>' ;
+  //print $f;
+
+  //$checkout_pages['review']['submit_value'] = 'Submit Order';
+  $checkout_pages['review']['value'] = $f;
+  print $f;
+
+}
+
+
+
+
+//print dsm($form_id);
 
 /**
  * Payment method callback: checkout form validation.
